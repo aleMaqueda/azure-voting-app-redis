@@ -67,5 +67,13 @@ pipeline {
             '''
          }
       }
+      stage('Run Anchore'){
+         steps{
+            sh '''
+            echo  "maqueda/jenkins-course" > anchore_images
+            '''
+            anchore bailOnFail: false, bailOnPluginFail: false, name: 'anchore_images'
+         }
+      }
    }
 }
