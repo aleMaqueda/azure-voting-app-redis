@@ -60,5 +60,12 @@ pipeline {
             }   
          }
       }
+      stage('Run Trivy'){
+         steps{
+            sh '''
+            trivy maqueda/jenkins-course
+            '''
+         }
+      }
    }
 }
