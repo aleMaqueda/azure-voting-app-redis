@@ -65,28 +65,28 @@ pipeline {
             }   
          }
       }
-      stage('Container scanning'){
-         parallel{
-            stage('Run Trivy'){
-               steps{
-                  sleep(time: 30, unit: 'SECONDS')
-                  /*
-                  sh '''
-                  trivy maqueda/jenkins-course
-                  '''
-                  */
-               }
-            }
-            stage('Run Anchore'){
-               steps{
-                  sh '''
-                  echo  "maqueda/jenkins-course" > anchore_images
-                  '''
-                  anchore bailOnFail: false, bailOnPluginFail: false, name: 'anchore_images'
-               }
-            }
-         }
-      }
+      // stage('Container scanning'){
+      //    parallel{
+      //       stage('Run Trivy'){
+      //          steps{
+      //             sleep(time: 30, unit: 'SECONDS')
+      //             /*
+      //             sh '''
+      //             trivy maqueda/jenkins-course
+      //             '''
+      //             */
+      //          }
+      //       }
+      //       stage('Run Anchore'){
+      //          steps{
+      //             sh '''
+      //             echo  "maqueda/jenkins-course" > anchore_images
+      //             '''
+      //             anchore bailOnFail: false, bailOnPluginFail: false, name: 'anchore_images'
+      //          }
+      //       }
+      //    }
+      // }
       stage('Deploy GKE'){
          steps{
             step([
