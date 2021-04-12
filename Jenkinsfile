@@ -1,6 +1,11 @@
 pipeline {
    agent any
-
+   environment {
+      PROJECT_ID = 'proyecto2021-310522'
+      CLUSTER_NAME = 'autopilot-cluster-1'
+      LOCATION = 'us-central1'
+      CREDENTIALS_ID = 'proyecto2021'
+   }
    stages {
       stage('Verify Branch') {
          steps {
@@ -80,6 +85,18 @@ pipeline {
                   anchore bailOnFail: false, bailOnPluginFail: false, name: 'anchore_images'
                }
             }
+         }
+      }
+      stage('Deploy GKE'){
+         steps{
+            step([
+               $class: 'KubernetesEngineBuilder',
+               projectId: env.PROJECT_ID,
+               clusterName: env.CLUSTER_NAME,
+               location: env.LOCATION,
+               manifestPattern: 'azure-vote-all-in-one-redis.yaml',
+               credentialsId: env.CREDENTIALS_ID,
+               verifyDeployments: true])
          }
       }
    }
