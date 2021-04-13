@@ -1,6 +1,11 @@
 pipeline {
    agent any
-
+   environment {
+      PROJECT_ID = 'proyecto2021-310522'
+      CLUSTER_NAME = 'autopilot-cluster-1'
+      LOCATION = 'us-central1'
+      CREDENTIALS_ID = 'proyecto2021'
+   }
    stages {
       stage('Verify Branch') {
          steps {
@@ -9,22 +14,20 @@ pipeline {
       }
       stage('Docker Build') {
          steps {
-            pwsh(script: 'docker images -a')
-            pwsh(script: """
-               cd azure-vote/
-               docker images -a
-               docker build -t jenkins-pipeline .
-               docker images -a
-               cd ..
-            """)
+            sh '''
+            cd azure-vote/; 
+            docker build -t jenkins-pipeline .
+            docker images -a | grep jenkins-pipeline
+            cd ..
+            '''
          }
       }
       stage('Start test app') {
          steps {
-            pwsh(script: """
+            sh '''
                docker-compose up -d
-               ./scripts/test_container.ps1
-            """)
+              
+            '''
          }
          post {
             success {
@@ -37,88 +40,66 @@ pipeline {
       }
       stage('Run Tests') {
          steps {
-            pwsh(script: """
-               pytest ./tests/test_sample.py
-            """)
+            sh '''
+               python ./tests/test_sample.py
+            '''
          }
       }
       stage('Stop test app') {
          steps {
-            pwsh(script: """
+            sh '''
                docker-compose down
-            """)
+            '''
          }
       }
-      stage('Container Scanning') {
-         parallel {
-            stage('Run Anchore') {
-               steps {
-                  pwsh(script: """
-                     Write-Output "blackdentech/jenkins-course" > anchore_images
-                  """)
-                  anchore bailOnFail: false, bailOnPluginFail: false, name: 'anchore_images'
+      stage('Push container'){
+         steps{
+            echo "Workspace is $WORKSPACE"
+            dir("$WORKSPACE/azure-vote"){
+               script {
+                  docker.withRegistry('https://index.docker.io/v1/', 'DockerHub') {
+                     def image = docker.build('maqueda/jenkins-course:latest')
+                     image.push()
+                  }
                }
-            }
-            stage('Run Trivy') {
-               steps {
-                  sleep(time: 30, unit: 'SECONDS')
-                  // pwsh(script: """
-                  // C:\\Windows\\System32\\wsl.exe -- sudo trivy blackdentech/jenkins-course
-                  // """)
-               }
-            }
+            }   
          }
       }
-      stage('Deploy to QA') {
-         environment {
-            ENVIRONMENT = 'qa'
-         }
-         steps {
-            echo "Deploying to ${ENVIRONMENT}"
-            acsDeploy(
-               azureCredentialsId: "jenkins_demo",
-               configFilePaths: "**/*.yaml",
-               containerService: "${ENVIRONMENT}-demo-cluster | AKS",
-               resourceGroupName: "${ENVIRONMENT}-demo",
-               sshCredentialsId: ""
-            )
-         }
-      }
-      stage('Approve PROD Deploy') {
+      // stage('Container scanning'){
+      //    parallel{
+      //       stage('Run Trivy'){
+      //          steps{
+      //             sleep(time: 30, unit: 'SECONDS')
+      //             /*
+      //             sh '''
+      //             trivy maqueda/jenkins-course
+      //             '''
+      //             */
+      //          }
+      //       }
+      //       stage('Run Anchore'){
+      //          steps{
+      //             sh '''
+      //             echo  "maqueda/jenkins-course" > anchore_images
+      //             '''
+      //             anchore bailOnFail: false, bailOnPluginFail: false, name: 'anchore_images'
+      //          }
+      //       }
+      //    }
+      // }
+      stage('Deploy GKE'){
          when {
             branch 'master'
          }
-         options {
-            timeout(time: 1, unit: 'HOURS') 
-         }
-         steps {
-            input message: "Deploy?"
-         }
-         post {
-            success {
-               echo "Production Deploy Approved"
-            }
-            aborted {
-               echo "Production Deploy Denied"
-            }
-         }
-      }
-      stage('Deploy to PROD') {
-         when {
-            branch 'master'
-         }
-         environment {
-            ENVIRONMENT = 'prod'
-         }
-         steps {
-            echo "Deploying to ${ENVIRONMENT}"
-            acsDeploy(
-               azureCredentialsId: "jenkins_demo",
-               configFilePaths: "**/*.yaml",
-               containerService: "${ENVIRONMENT}-demo-cluster | AKS",
-               resourceGroupName: "${ENVIRONMENT}-demo",
-               sshCredentialsId: ""
-            )
+         steps{
+            step([
+               $class: 'KubernetesEngineBuilder',
+               projectId: env.PROJECT_ID,
+               clusterName: env.CLUSTER_NAME,
+               location: env.LOCATION,
+               manifestPattern: 'azure-vote-all-in-one-redis.yaml',
+               credentialsId: env.CREDENTIALS_ID,
+               verifyDeployments: true])
          }
       }
    }
