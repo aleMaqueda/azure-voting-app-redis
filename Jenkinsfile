@@ -88,6 +88,9 @@ pipeline {
       //    }
       // }
       stage('Deploy GKE'){
+         when {
+            branch 'master'
+         }
          steps{
             step([
                $class: 'KubernetesEngineBuilder',
