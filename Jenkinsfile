@@ -87,6 +87,25 @@ pipeline {
       //       }
       //    }
       // }
+      stage('Approve GKE deploy'){
+         when {
+            branch 'master'
+         }
+         options{
+            timeout(time: 1, unit: 'MINUTES')
+         }
+         steps{
+            input message: "Deploy?"
+         }
+         post {
+            success {
+               echo 'Deploy approved'
+            }
+            aborted {
+               echo 'Deploy denied'
+            }
+         }
+      }
       stage('Deploy GKE'){
          when {
             branch 'master'
