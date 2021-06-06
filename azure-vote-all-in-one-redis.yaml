@@ -50,7 +50,7 @@ spec:
     spec:
       containers:
       - name: azure-vote-front
-        image: blackdentech/jenkins-course:latest
+        image: maqueda/jenkins-course:latest
         ports:
         - containerPort: 80
         resources:

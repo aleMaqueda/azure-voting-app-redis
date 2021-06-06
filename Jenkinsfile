@@ -6,7 +6,57 @@ pipeline {
             echo "$GIT_BRANCH"
          }
       }
-      stage('Deploy') {
+      stage('Docker Build') {
+         steps {
+            sh '''
+            cd azure-vote/; 
+            docker build -t jenkins-pipeline .
+            '''
+         }
+      }
+      stage('Start test app') {
+         steps {
+            sh '''
+               docker-compose up -d
+            '''
+         }
+         post {
+            success {
+               echo "App started successfully :)"
+            }
+            failure {
+               echo "App failed to start :("
+            }
+         }
+      }
+      stage('Run Tests') {
+         steps {
+            sh '''
+               python ./tests/test_sample.py
+            '''
+         }
+      }
+      stage('Stop test app') {
+         steps {
+            sh '''
+               docker-compose down
+            '''
+         }
+      }
+      stage('Push container'){
+         steps{
+            echo "Workspace is $WORKSPACE"
+            dir("$WORKSPACE/azure-vote"){
+               script {
+                  docker.withRegistry('https://index.docker.io/v1/', 'DockerHub') {
+                     def image = docker.build('maqueda/jenkins-course:latest')
+                     image.push()
+                  }
+               }
+            }   
+         }
+      }      
+      stage('Deploy k8s') {
          steps {
             script {
                withKubeConfig([credentialsId: 'credentialserviceaccount1',
